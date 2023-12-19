@@ -8,10 +8,19 @@ public interface Expr {
     <R> R accept(Visitor<R> visitor);
 
     interface Visitor<R> {
+        R visitAssign(Assign expr);
         R visitBinary(Binary expr);
         R visitGrouping(Grouping expr);
         R visitLiteral(Literal expr);
         R visitUnary(Unary expr);
+        R visitVariable(Variable expr);
+    }
+
+    record Assign(Token name, Expr value) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitAssign(this);
+        }
     }
 
     record Binary(Expr left, Token operator, Expr right) implements Expr {
@@ -39,6 +48,13 @@ public interface Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitUnary(this);
+        }
+    }
+
+    record Variable(Token name) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitVariable(this);
         }
     }
 }

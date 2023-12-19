@@ -73,13 +73,13 @@ public class Lox {
         var tokens = lexer.scanTokens();
 
         var parser = new Parser(tokens);
-        var expr = parser.parse();
+        var statements = parser.parse();
 
         if (hadSyntaxError) {
             return;
         }
 
-        interpreter.interpret(expr);
+        interpreter.interpret(statements);
     }
 
     private static final Interpreter interpreter = new Interpreter();

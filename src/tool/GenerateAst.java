@@ -24,14 +24,26 @@ public class GenerateAst {
 
         var expr = new TreeMap<String, List<String>>() {
             {
+                put("Assign", List.of("Token name", "Expr value"));
                 put("Binary", List.of("Expr left", "Token operator", "Expr right"));
                 put("Grouping", List.of("Expr expression"));
                 put("Literal", List.of("Object value"));
                 put("Unary", List.of("Token operator", "Expr right"));
+                put("Variable", List.of("Token name"));
+            }
+        };
+
+        var stmt = new TreeMap<String, List<String>>() {
+            {
+                put("Block", List.of("java.util.List<Stmt> statements"));
+                put("Expression", List.of("Expr expression"));
+                put("Print", List.of("Expr expression"));
+                put("Var", List.of("Token name", "Expr initializer"));
             }
         };
 
         createAst(path, "Expr", expr, true);
+        createAst(path, "Stmt", stmt, false);
     }
 
     private static void createAst(

@@ -1,5 +1,6 @@
 package lox;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -7,20 +8,67 @@ import java.util.Objects;
  *
  * @author Kevin Lee
  */
-public class Interpreter implements Expr.Visitor<Object> {
+public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
 
-    public void interpret(Expr expr) {
+    public void interpret(List<Stmt> statements) {
         try {
-            var result = evaluate(expr);
-            System.out.println(stringify(result));
+            for (Stmt statement : statements) {
+                execute(statement);
+            }
         } catch (RuntimeError runtimeError) {
             Lox.runtimeError(runtimeError);
         }
     }
 
     //
+    // Stmt
+    //
+
+    @Override
+    public void visitBlock(Stmt.Block stmt) {
+        var previousEnvironment = currentEnvironment;
+
+        try {
+            currentEnvironment = new Environment(currentEnvironment);
+
+            for (var statement : stmt.statements()) {
+                execute(statement);
+            }
+        } finally {
+            currentEnvironment = previousEnvironment;
+        }
+    }
+
+    @Override
+    public void visitExpression(Stmt.Expression stmt) {
+        evaluate(stmt.expression());
+    }
+
+    @Override
+    public void visitPrint(Stmt.Print stmt) {
+        var value = evaluate(stmt.expression());
+        System.out.println(stringify(value));
+    }
+
+    @Override
+    public void visitVar(Stmt.Var stmt) {
+        Object value = null;
+        if (stmt.initializer() != null) {
+            value = evaluate(stmt.initializer());
+        }
+        currentEnvironment.define(stmt.name(), value);
+    }
+
+    //
     // Expr
     //
+
+    @Override
+    public Object visitAssign(Expr.Assign expr) {
+        var value = evaluate(expr.value());
+        currentEnvironment.assign(expr.name(), value);
+        return value;
+    }
 
     @Override
     public Object visitBinary(Expr.Binary expr) {
@@ -85,6 +133,11 @@ public class Interpreter implements Expr.Visitor<Object> {
         };
     }
 
+    @Override
+    public Object visitVariable(Expr.Variable expr) {
+        return currentEnvironment.get(expr.name());
+    }
+
     //
     // Interpreter
     //
@@ -107,6 +160,10 @@ public class Interpreter implements Expr.Visitor<Object> {
         return expr.accept(this);
     }
 
+    private void execute(Stmt stmt) {
+        stmt.accept(this);
+    }
+
     private boolean isTruthy(Object value) {
         if (value == null) {
             return false;
@@ -125,5 +182,7 @@ public class Interpreter implements Expr.Visitor<Object> {
         }
         return text;
     }
+
+    private Environment currentEnvironment = new Environment(null);
 
 }

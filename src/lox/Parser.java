@@ -1,5 +1,6 @@
 package lox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,13 +14,72 @@ public class Parser {
         this.tokens = tokens;
     }
 
-    public Expr parse() {
+    public List<Stmt> parse() {
+        var statements = new ArrayList<Stmt>();
+        while (isParsing()) {
+            statements.add(declaration());
+        }
+        return statements;
+    }
+
+    //
+    // Stmt
+    //
+
+    private Stmt declaration() {
         try {
-            return expression();
+            if (match(TokenType.LEFT_BRACE)) {
+                return blockDeclaration();
+            } else if (match(TokenType.VAR)) {
+                return varDeclaration();
+            } else {
+                return statement();
+            }
         } catch (ParseError parseError) {
             synchronize();
             return null;
         }
+    }
+
+    private Stmt blockDeclaration() {
+        var statements = new ArrayList<Stmt>();
+        while (!check(TokenType.RIGHT_BRACE) && isParsing()) {
+            statements.add(declaration());
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after block.");
+        return new Stmt.Block(statements);
+    }
+
+    private Stmt varDeclaration() {
+        var name = consume(TokenType.IDENTIFIER, "Expect variable name.");
+
+        Expr initializer = null;
+        if (match(TokenType.EQUAL)) {
+            initializer = expression();
+        }
+
+        consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.");
+        return new Stmt.Var(name, initializer);
+    }
+
+    private Stmt statement() {
+        if (match(TokenType.PRINT)) {
+            return printStatement();
+        }
+        return expressionStatement();
+    }
+
+    private Stmt printStatement() {
+        var expr = expression();
+        consume(TokenType.SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Print(expr);
+    }
+
+    private Stmt expressionStatement() {
+        var expr = expression();
+        consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+        return new Stmt.Expression(expr);
     }
 
     //
@@ -27,7 +87,24 @@ public class Parser {
     //
 
     private Expr expression() {
-        return equality();
+        return assignment();
+    }
+
+    private Expr assignment() {
+        var expr = equality();
+
+        if (match(TokenType.EQUAL)) {
+            var equals = previous();
+            var assign = assignment();
+
+            if (expr instanceof Expr.Variable) {
+                return new Expr.Assign(((Expr.Variable) expr).name(), assign);
+            }
+
+            throw error(equals, "Invalid assignment target.");
+        }
+
+        return expr;
     }
 
     private Expr equality() {
@@ -82,6 +159,10 @@ public class Parser {
 
         if (match(TokenType.NUMBER, TokenType.STRING)) {
             return new Expr.Literal(previous().literal());
+        }
+
+        if (match(TokenType.IDENTIFIER)) {
+            return new Expr.Variable(previous());
         }
 
         if (match(TokenType.LEFT_PAREN)) {
