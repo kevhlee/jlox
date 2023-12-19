@@ -1,0 +1,48 @@
+<project name="jlox" default="dist" basedir=".">
+    <property name="lib" location="lib"/>
+    <property name="out" location="out"/>
+    <property name="name" value="jlox"/>
+
+    <path id="libraries">
+        <pathelement location="${lib}"/>
+        <fileset dir="${lib}">
+            <include name="**/*.jar"/>
+        </fileset>
+        <pathelement path="${java.class.path}"/>
+    </path>
+
+    <target name="init">
+        <mkdir dir="${out}"/>
+    </target>
+
+    <target name="compile" depends="init">
+        <javac srcdir="src/main/java/lox" destdir="${out}" source="21" target="21" debug="on" includeantruntime="false">
+            <classpath refid="libraries"/>
+        </javac>
+    </target>
+
+    <target name="generate-ast" depends="init">
+        <java sourcefile="src/main/java/tool/GenerateAst.java" fork="true">
+            <arg value="./src/main/java/lox"/>
+        </java>
+    </target>
+
+    <target name="dist" depends="compile">
+        <jar jarfile="${out}/lib.jar">
+            <zipgroupfileset dir="${lib}">
+                <include name="**/*.jar"/>
+            </zipgroupfileset>
+        </jar>
+        <jar destfile="${name}.jar" basedir="${out}">
+            <manifest>
+                <attribute name="Main-Class" value="lox.Lox"/>
+            </manifest>
+            <zipfileset src="${out}/lib.jar" excludes="META-INF/*.SF"/>
+        </jar>
+    </target>
+
+    <target name="clean">
+        <delete file="${name}.jar"/>
+        <delete dir="${out}"/>
+    </target>
+</project>
