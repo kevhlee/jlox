@@ -1,0 +1,70 @@
+package com.khl.lox;
+
+/**
+ * A Lox expression AST node.
+ *
+ * @author Kevin Lee
+ */
+public interface Expr {
+    <R> R accept(Visitor<R> visitor);
+
+    interface Visitor<R> {
+        R visitAssign(Assign expr);
+
+        R visitBinary(Binary expr);
+
+        R visitGrouping(Grouping expr);
+
+        R visitLiteral(Literal expr);
+
+        R visitUnary(Unary expr);
+
+        R visitVariable(Variable expr);
+    }
+
+    //
+    // Classes
+    //
+
+    record Assign(Token name, Expr value) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitAssign(this);
+        }
+    }
+
+    record Binary(Expr left, Token operator, Expr right) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitBinary(this);
+        }
+    }
+
+    record Grouping(Expr expression) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitGrouping(this);
+        }
+    }
+
+    record Literal(Object value) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitLiteral(this);
+        }
+    }
+
+    record Unary(Token operator, Expr right) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitUnary(this);
+        }
+    }
+
+    record Variable(Token name) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitVariable(this);
+        }
+    }
+}
