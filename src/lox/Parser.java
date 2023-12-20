@@ -28,13 +28,10 @@ public class Parser {
 
     private Stmt declaration() {
         try {
-            if (match(TokenType.LEFT_BRACE)) {
-                return blockDeclaration();
-            } else if (match(TokenType.VAR)) {
+            if (match(TokenType.VAR)) {
                 return varDeclaration();
-            } else {
-                return statement();
             }
+            return statement();
         } catch (ParseError parseError) {
             synchronize();
             return null;
@@ -66,6 +63,9 @@ public class Parser {
     private Stmt statement() {
         if (match(TokenType.PRINT)) {
             return printStatement();
+        }
+        if (match(TokenType.LEFT_BRACE)) {
+            return blockDeclaration();
         }
         return expressionStatement();
     }
