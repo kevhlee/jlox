@@ -24,7 +24,6 @@ public class Lox {
         }
     }
 
-
     protected static void runtimeError(RuntimeError runtimeError) {
         System.err.printf("%s\n[line %d]\n", runtimeError.getMessage(), runtimeError.token.line());
         hadRuntimeError = true;
@@ -32,6 +31,14 @@ public class Lox {
 
     protected static void syntaxError(int line, String message) {
         syntaxError(line, "", message);
+    }
+
+    protected static void syntaxError(Token token, String message) {
+        if (token.type() == TokenType.EOF) {
+            Lox.syntaxError(token.line(), " at end", message);
+        } else {
+            Lox.syntaxError(token.line(), " at '" + token.lexeme() + "'", message);
+        }
     }
 
     protected static void syntaxError(int line, String where, String message) {
