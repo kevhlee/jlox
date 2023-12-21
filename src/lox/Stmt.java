@@ -10,8 +10,10 @@ public interface Stmt {
     interface Visitor {
         void visitBlock(Block stmt);
         void visitExpression(Expression stmt);
+        void visitIf(If stmt);
         void visitPrint(Print stmt);
         void visitVar(Var stmt);
+        void visitWhile(While stmt);
     }
 
     record Block(java.util.List<Stmt> statements) implements Stmt {
@@ -28,6 +30,13 @@ public interface Stmt {
         }
     }
 
+    record If(Expr condition, Stmt thenBranch, Stmt elseBranch) implements Stmt {
+        @Override
+        public void accept(Visitor visitor) {
+            visitor.visitIf(this);
+        }
+    }
+
     record Print(Expr expression) implements Stmt {
         @Override
         public void accept(Visitor visitor) {
@@ -39,6 +48,13 @@ public interface Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitVar(this);
+        }
+    }
+
+    record While(Expr condition, Stmt body) implements Stmt {
+        @Override
+        public void accept(Visitor visitor) {
+            visitor.visitWhile(this);
         }
     }
 }

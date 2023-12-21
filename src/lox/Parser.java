@@ -50,17 +50,21 @@ public class Parser {
 
     private Stmt varDeclaration() {
         var name = consume(TokenType.IDENTIFIER, "Expect variable name.");
-
-        Expr initializer = null;
-        if (match(TokenType.EQUAL)) {
-            initializer = expression();
-        }
-
+        var initializer = match(TokenType.EQUAL) ? expression() : null;
         consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.");
         return new Stmt.Var(name, initializer);
     }
 
     private Stmt statement() {
+        if (match(TokenType.FOR)) {
+            return forStatement();
+        }
+        if (match(TokenType.WHILE)) {
+            return whileStatement();
+        }
+        if (match(TokenType.IF)) {
+            return ifStatement();
+        }
         if (match(TokenType.PRINT)) {
             return printStatement();
         }
@@ -68,6 +72,57 @@ public class Parser {
             return blockDeclaration();
         }
         return expressionStatement();
+    }
+
+    private Stmt forStatement() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.");
+
+        Stmt initializer;
+        if (match(TokenType.SEMICOLON)) {
+            initializer = null;
+        } else if (match(TokenType.VAR)) {
+            initializer = varDeclaration();
+        } else {
+            initializer = expressionStatement();
+        }
+
+        var condition = !check(TokenType.SEMICOLON) ? expression() : new Expr.Literal(true);
+        consume(TokenType.SEMICOLON, "Expect ';' after loop condition.");
+
+        var increment = !check(TokenType.RIGHT_PAREN) ? expression() : null;
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        var body = statement();
+
+        if (increment != null) {
+            body = new Stmt.Block(List.of(body, new Stmt.Expression(increment)));
+        }
+
+        body = new Stmt.While(condition, body);
+
+        if (initializer != null) {
+            body = new Stmt.Block(List.of(initializer, body));
+        }
+
+        return body;
+    }
+
+    private Stmt whileStatement() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
+        var condition = expression();
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.");
+        return new Stmt.While(condition, statement());
+    }
+
+    private Stmt ifStatement() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");
+        var condition = expression();
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.");
+
+        var thenBranch = statement();
+        var elseBranch = match(TokenType.ELSE) ? statement() : null;
+
+        return new Stmt.If(condition, thenBranch, elseBranch);
     }
 
     private Stmt printStatement() {
@@ -91,19 +146,32 @@ public class Parser {
     }
 
     private Expr assignment() {
-        var expr = equality();
+        var expr = or();
 
         if (match(TokenType.EQUAL)) {
             var equals = previous();
-            var assign = assignment();
-
             if (expr instanceof Expr.Variable) {
-                return new Expr.Assign(((Expr.Variable) expr).name(), assign);
+                return new Expr.Assign(((Expr.Variable) expr).name(), assignment());
             }
-
             throw error(equals, "Invalid assignment target.");
         }
 
+        return expr;
+    }
+
+    private Expr or() {
+        var expr = and();
+        while (match(TokenType.OR)) {
+            expr = new Expr.Logical(expr, previous(), and());
+        }
+        return expr;
+    }
+
+    private Expr and() {
+        var expr = equality();
+        while (match(TokenType.AND)) {
+            expr = new Expr.Logical(expr, previous(), equality());
+        }
         return expr;
     }
 

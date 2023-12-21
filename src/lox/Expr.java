@@ -12,6 +12,7 @@ public interface Expr {
         R visitBinary(Binary expr);
         R visitGrouping(Grouping expr);
         R visitLiteral(Literal expr);
+        R visitLogical(Logical expr);
         R visitUnary(Unary expr);
         R visitVariable(Variable expr);
     }
@@ -41,6 +42,13 @@ public interface Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitLiteral(this);
+        }
+    }
+
+    record Logical(Expr left, Token operator, Expr right) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitLogical(this);
         }
     }
 
