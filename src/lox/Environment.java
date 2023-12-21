@@ -18,6 +18,7 @@ public class Environment {
         if (!values.containsKey(token.lexeme())) {
             if (enclosing != null) {
                 enclosing.assign(token, value);
+                return;
             }
             throw new RuntimeError(token, "Undefined variable '" + token.lexeme() + "'.");
         }
