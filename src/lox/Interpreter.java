@@ -1,5 +1,6 @@
 package lox;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -9,6 +10,25 @@ import java.util.Objects;
  * @author Kevin Lee
  */
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
+
+    public Interpreter() {
+        globals.define("clock", new LoxCallable() {
+            @Override
+            public int arity() {
+                return 0;
+            }
+
+            @Override
+            public Object call(Interpreter interpreter, List<Object> arguments) {
+                return System.currentTimeMillis() / 1000.0;
+            }
+
+            @Override
+            public String toString() {
+                return "<native fn>";
+            }
+        });
+    }
 
     public void interpret(List<Stmt> statements) {
         try {
@@ -26,22 +46,17 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
 
     @Override
     public void visitBlock(Stmt.Block stmt) {
-        var previousEnvironment = currentEnvironment;
-
-        try {
-            currentEnvironment = new Environment(currentEnvironment);
-
-            for (var statement : stmt.statements()) {
-                execute(statement);
-            }
-        } finally {
-            currentEnvironment = previousEnvironment;
-        }
+        executeBlock(stmt.statements(), new Environment(currentEnvironment));
     }
 
     @Override
     public void visitExpression(Stmt.Expression stmt) {
         evaluate(stmt.expression());
+    }
+
+    @Override
+    public void visitFunction(Stmt.Function stmt) {
+        currentEnvironment.define(stmt.name().lexeme(), new LoxFunction(stmt, currentEnvironment));
     }
 
     @Override
@@ -57,6 +72,11 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     public void visitPrint(Stmt.Print stmt) {
         var value = evaluate(stmt.expression());
         System.out.println(stringify(value));
+    }
+
+    @Override
+    public void visitReturn(Stmt.Return stmt) {
+        throw new LoxReturn((stmt.value() != null) ? evaluate(stmt.value()) : null);
     }
 
     @Override
@@ -125,6 +145,28 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     }
 
     @Override
+    public Object visitCall(Expr.Call expr) {
+        var callee = evaluate(expr.callee());
+
+        var arguments = new ArrayList<>();
+        for (var argument : expr.arguments()) {
+            arguments.add(evaluate(argument));
+        }
+
+        if (callee instanceof LoxCallable callable) {
+            if (arguments.size() != callable.arity()) {
+                throw new RuntimeError(
+                    expr.paren(),
+                    String.format("Expected %d arguments but got %d.", callable.arity(), arguments.size()));
+            }
+
+            return callable.call(this, arguments);
+        } else {
+            throw new RuntimeError(expr.paren(), "Can only call functions and classes.");
+        }
+    }
+
+    @Override
     public Object visitGrouping(Expr.Grouping expr) {
         return evaluate(expr.expression());
     }
@@ -171,6 +213,18 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     // Interpreter
     //
 
+    protected void executeBlock(List<Stmt> statements, Environment environment) {
+        var previousEnvironment = currentEnvironment;
+        try {
+            currentEnvironment = environment;
+            for (var statement : statements) {
+                execute(statement);
+            }
+        } finally {
+            currentEnvironment = previousEnvironment;
+        }
+    }
+
     private void checkNumberOperand(Token operator, Object operand) {
         if (operand instanceof Double) {
             return;
@@ -212,6 +266,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         return text;
     }
 
-    private Environment currentEnvironment = new Environment(null);
+    private final Environment globals = new Environment(null);
+    private Environment currentEnvironment = globals;
 
 }
