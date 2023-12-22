@@ -23,12 +23,22 @@ public interface Expr {
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitAssign(this);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
     }
 
     record Binary(Expr left, Token operator, Expr right) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitBinary(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
         }
     }
 
@@ -37,12 +47,22 @@ public interface Expr {
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitCall(this);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
     }
 
     record Grouping(Expr expression) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitGrouping(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
         }
     }
 
@@ -51,12 +71,22 @@ public interface Expr {
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitLiteral(this);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
     }
 
     record Logical(Expr left, Token operator, Expr right) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitLogical(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
         }
     }
 
@@ -65,12 +95,22 @@ public interface Expr {
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitUnary(this);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
     }
 
     record Variable(Token name) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitVariable(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
         }
     }
 }

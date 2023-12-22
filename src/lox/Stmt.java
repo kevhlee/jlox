@@ -23,12 +23,22 @@ public interface Stmt {
         public void accept(Visitor visitor) {
             visitor.visitBlock(this);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
     }
 
     record Expression(Expr expression) implements Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitExpression(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
         }
     }
 
@@ -37,12 +47,22 @@ public interface Stmt {
         public void accept(Visitor visitor) {
             visitor.visitFunction(this);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
     }
 
     record If(Expr condition, Stmt thenBranch, Stmt elseBranch) implements Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitIf(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
         }
     }
 
@@ -51,12 +71,22 @@ public interface Stmt {
         public void accept(Visitor visitor) {
             visitor.visitPrint(this);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
     }
 
     record Return(Token keyword, Expr value) implements Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitReturn(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
         }
     }
 
@@ -65,12 +95,22 @@ public interface Stmt {
         public void accept(Visitor visitor) {
             visitor.visitVar(this);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
     }
 
     record While(Expr condition, Stmt body) implements Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitWhile(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
         }
     }
 }

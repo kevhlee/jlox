@@ -177,6 +177,20 @@ public class GenerateAst {
             formatter.writeNewline();
             formatter.write("}");
             formatter.writeNewline();
+
+            formatter.writeNewline();
+            formatter.write("@Override");
+            formatter.writeNewline();
+            formatter.write("public boolean equals(Object obj) {");
+            formatter.writeNewline();
+
+            try (var indent2 = formatter.increaseIndent()) {
+                formatter.write("return this == obj;");
+            }
+
+            formatter.writeNewline();
+            formatter.write("}");
+            formatter.writeNewline();
         }
 
         formatter.write("}");
