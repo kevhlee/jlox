@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * @author Kevin Lee
  */
-public interface LoxCallable {
+interface LoxCallable {
 
     int arity();
 

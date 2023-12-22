@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * @author Kevin Lee
  */
-public class LoxFunction implements LoxCallable {
+class LoxFunction implements LoxCallable {
 
     public LoxFunction(Stmt.Function declaration, Environment closure) {
         this.closure = closure;
@@ -20,15 +20,15 @@ public class LoxFunction implements LoxCallable {
     @Override
     public Object call(Interpreter interpreter, List<Object> arguments) {
         var environment = new Environment(closure);
-        for (var i = 0; i < declaration.parameters().size(); i++) {
+        for (int i = 0; i < declaration.parameters().size(); i++) {
             environment.define(declaration.parameters().get(i).lexeme(), arguments.get(i));
         }
 
         try {
             interpreter.executeBlock(declaration.body(), environment);
             return null;
-        } catch (LoxReturn loxReturn) {
-            return loxReturn.value;
+        } catch (ReturnValue returnValue) {
+            return returnValue.value;
         }
     }
 
@@ -37,7 +37,7 @@ public class LoxFunction implements LoxCallable {
         return "<fn " + declaration.name().lexeme() + ">";
     }
 
-    private final Environment closure;
     private final Stmt.Function declaration;
+    private final Environment closure;
 
 }

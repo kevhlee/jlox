@@ -182,8 +182,8 @@ public class Parser {
 
         if (match(TokenType.EQUAL)) {
             var equals = previous();
-            if (expr instanceof Expr.Variable) {
-                return new Expr.Assign(((Expr.Variable) expr).name(), assignment());
+            if (expr instanceof Expr.Variable variable) {
+                return new Expr.Assign(variable.name(), assignment());
             }
             throw error(equals, "Invalid assignment target.");
         }

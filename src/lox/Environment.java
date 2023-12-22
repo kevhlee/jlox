@@ -4,45 +4,62 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A Lox interpreter instance's environment containing its state.
- *
  * @author Kevin Lee
  */
-public class Environment {
+class Environment {
+
+    public Environment() {
+        this(null);
+    }
 
     public Environment(Environment enclosing) {
         this.enclosing = enclosing;
     }
 
-    public void assign(Token token, Object value) {
-        if (!values.containsKey(token.lexeme())) {
-            if (enclosing != null) {
-                enclosing.assign(token, value);
-                return;
-            }
-            throw new RuntimeError(token, "Undefined variable '" + token.lexeme() + "'.");
+    public void assign(Token name, Object value) {
+        if (values.containsKey(name.lexeme())) {
+            values.put(name.lexeme(), value);
+            return;
         }
 
-        values.put(token.lexeme(), value);
+        if (enclosing != null) {
+            enclosing.assign(name, value);
+            return;
+        }
+
+        throw new RuntimeError(name, "Undefined variable '" + name.lexeme() + "'.");
     }
 
-    public void define(Token token, Object value) {
-        define(token.lexeme(), value);
+    public void assignAt(int distance, Token name, Object value) {
+        ancestor(distance).values.put(name.lexeme(), value);
     }
 
     public void define(String name, Object value) {
         values.put(name, value);
     }
 
-    public Object get(Token token) {
-        if (!values.containsKey(token.lexeme())) {
-            if (enclosing != null) {
-                return enclosing.get(token);
-            }
-            throw new RuntimeError(token, "Undefined variable '" + token.lexeme() + "'.");
+    public Object get(Token name) {
+        if (values.containsKey(name.lexeme())) {
+            return values.get(name.lexeme());
         }
 
-        return values.get(token.lexeme());
+        if (enclosing != null) {
+            return enclosing.get(name);
+        }
+
+        throw new RuntimeError(name, "Undefined variable '" + name.lexeme() + "'.");
+    }
+
+    public Object getAt(int distance, String name) {
+        return ancestor(distance).values.get(name);
+    }
+
+    private Environment ancestor(int distance) {
+        var environment = this;
+        for (int i = 0; i < distance; i++) {
+            environment = environment.enclosing;
+        }
+        return environment;
     }
 
     private final Environment enclosing;

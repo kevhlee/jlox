@@ -1,7 +1,8 @@
 package lox;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -32,7 +33,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
 
     public void interpret(List<Stmt> statements) {
         try {
-            for (Stmt statement : statements) {
+            for (var statement : statements) {
                 execute(statement);
             }
         } catch (RuntimeError runtimeError) {
@@ -46,7 +47,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
 
     @Override
     public void visitBlock(Stmt.Block stmt) {
-        executeBlock(stmt.statements(), new Environment(currentEnvironment));
+        executeBlock(stmt.statements(), new Environment(environment));
     }
 
     @Override
@@ -56,7 +57,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
 
     @Override
     public void visitFunction(Stmt.Function stmt) {
-        currentEnvironment.define(stmt.name().lexeme(), new LoxFunction(stmt, currentEnvironment));
+        environment.define(stmt.name().lexeme(), new LoxFunction(stmt, environment));
     }
 
     @Override
@@ -76,16 +77,13 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
 
     @Override
     public void visitReturn(Stmt.Return stmt) {
-        throw new LoxReturn((stmt.value() != null) ? evaluate(stmt.value()) : null);
+        throw new ReturnValue((stmt.value() != null) ? evaluate(stmt.value()) : null);
     }
 
     @Override
     public void visitVar(Stmt.Var stmt) {
-        Object value = null;
-        if (stmt.initializer() != null) {
-            value = evaluate(stmt.initializer());
-        }
-        currentEnvironment.define(stmt.name(), value);
+        var value = (stmt.initializer() != null) ? evaluate(stmt.initializer()) : null;
+        environment.define(stmt.name().lexeme(), value);
     }
 
     @Override
@@ -102,7 +100,14 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     @Override
     public Object visitAssign(Expr.Assign expr) {
         var value = evaluate(expr.value());
-        currentEnvironment.assign(expr.name(), value);
+
+        var distance = locals.get(expr);
+        if (distance != null) {
+            environment.assignAt(distance, expr.name(), value);
+        } else {
+            globals.assign(expr.name(), value);
+        }
+
         return value;
     }
 
@@ -148,22 +153,19 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     public Object visitCall(Expr.Call expr) {
         var callee = evaluate(expr.callee());
 
-        var arguments = new ArrayList<>();
-        for (var argument : expr.arguments()) {
-            arguments.add(evaluate(argument));
+        if (!(callee instanceof LoxCallable callable)) {
+            throw new RuntimeError(expr.paren(),
+                "Can only call functions and classes.");
         }
 
-        if (callee instanceof LoxCallable callable) {
-            if (arguments.size() != callable.arity()) {
-                throw new RuntimeError(
-                    expr.paren(),
-                    String.format("Expected %d arguments but got %d.", callable.arity(), arguments.size()));
-            }
-
-            return callable.call(this, arguments);
-        } else {
-            throw new RuntimeError(expr.paren(), "Can only call functions and classes.");
+        var arguments = expr.arguments().stream().map(this::evaluate).toList();
+        if (arguments.size() != callable.arity()) {
+            throw new RuntimeError(
+                expr.paren(),
+                String.format("Expected %d arguments but got %d.", callable.arity(), arguments.size()));
         }
+
+        return callable.call(this, arguments);
     }
 
     @Override
@@ -180,10 +182,14 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     public Object visitLogical(Expr.Logical expr) {
         var left = evaluate(expr.left());
 
-        if ((expr.operator().type() == TokenType.OR && isTruthy(left)) ||
-            (expr.operator().type() == TokenType.AND && !isTruthy(left))) {
-
-            return left;
+        if (expr.operator().type() == TokenType.OR) {
+            if (isTruthy(left)) {
+                return left;
+            }
+        } else {
+            if (!isTruthy(left)) {
+                return left;
+            }
         }
 
         return evaluate(expr.right());
@@ -206,22 +212,27 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
 
     @Override
     public Object visitVariable(Expr.Variable expr) {
-        return currentEnvironment.get(expr.name());
+        return lookUpVariable(expr.name(), expr);
     }
 
     //
     // Interpreter
     //
 
+    protected void resolve(Expr expr, int depth) {
+        locals.put(expr, depth);
+    }
+
     protected void executeBlock(List<Stmt> statements, Environment environment) {
-        var previousEnvironment = currentEnvironment;
+        var previousEnvironment = this.environment;
         try {
-            currentEnvironment = environment;
+            this.environment = environment;
+
             for (var statement : statements) {
                 execute(statement);
             }
         } finally {
-            currentEnvironment = previousEnvironment;
+            this.environment = previousEnvironment;
         }
     }
 
@@ -254,6 +265,15 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         return !(value instanceof Boolean) || (boolean) value;
     }
 
+    private Object lookUpVariable(Token name, Expr expr) {
+        var distance = locals.get(expr);
+        if (distance != null) {
+            return environment.getAt(distance, name.lexeme());
+        } else {
+            return globals.get(name);
+        }
+    }
+
     private String stringify(Object object) {
         if (object == null) {
             return "nil";
@@ -266,7 +286,8 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         return text;
     }
 
+    private final Map<Expr, Integer> locals = new HashMap<>();
     private final Environment globals = new Environment(null);
-    private Environment currentEnvironment = globals;
+    private Environment environment = globals;
 
 }

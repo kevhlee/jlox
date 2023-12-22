@@ -86,6 +86,13 @@ public class Lox {
             return;
         }
 
+        var resolver = new Resolver(interpreter);
+        resolver.resolve(statements);
+
+        if (hadSyntaxError) {
+            return;
+        }
+
         interpreter.interpret(statements);
     }
 
