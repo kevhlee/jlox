@@ -328,7 +328,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     }
 
     private final Map<Expr, Integer> locals = new HashMap<>();
-    private final Environment globals = new Environment(null);
+    private final Environment globals = new Environment();
     private Environment environment = globals;
 
 }

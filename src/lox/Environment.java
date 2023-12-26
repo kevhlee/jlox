@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * @author Kevin Lee
  */
-class Environment {
+public class Environment {
 
     public Environment() {
         this(null);
