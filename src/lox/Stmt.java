@@ -31,7 +31,7 @@ public interface Stmt {
         }
     }
 
-    record Class(Token name, java.util.List<Stmt.Function> methods) implements Stmt {
+    record Class(Token name, Expr.Variable superclass, java.util.List<Stmt.Function> methods) implements Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitClass(this);

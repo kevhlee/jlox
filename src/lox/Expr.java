@@ -16,6 +16,7 @@ public interface Expr {
         R visitLiteral(Literal expr);
         R visitLogical(Logical expr);
         R visitSet(Set expr);
+        R visitSuper(Super expr);
         R visitThis(This expr);
         R visitUnary(Unary expr);
         R visitVariable(Variable expr);
@@ -109,6 +110,18 @@ public interface Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitSet(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
+    }
+
+    record Super(Token keyword, Token method) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitSuper(this);
         }
 
         @Override

@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * @author Kevin Lee
  */
-record LoxClass(String name, Map<String, LoxFunction> methods) implements LoxCallable {
+record LoxClass(String name, LoxClass superclass, Map<String, LoxFunction> methods) implements LoxCallable {
 
     @Override
     public int arity() {
@@ -35,7 +35,15 @@ record LoxClass(String name, Map<String, LoxFunction> methods) implements LoxCal
     }
 
     LoxFunction findMethod(String name) {
-        return methods.get(name);
+        if (methods.containsKey(name)) {
+            return methods.get(name);
+        }
+
+        if (superclass != null) {
+            return superclass.findMethod(name);
+        }
+
+        return null;
     }
 
 }

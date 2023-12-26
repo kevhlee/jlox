@@ -52,7 +52,20 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
 
     @Override
     public void visitClass(Stmt.Class stmt) {
+        Object superclass = null;
+        if (stmt.superclass() != null) {
+            superclass = evaluate(stmt.superclass());
+            if (!(superclass instanceof LoxClass)) {
+                throw new RuntimeError(stmt.superclass().name(), "Superclass must be a class.");
+            }
+        }
+
         environment.define(stmt.name().lexeme(), null);
+
+        if (stmt.superclass() != null) {
+            environment = new Environment(environment);
+            environment.define("super", superclass);
+        }
 
         var methods = new HashMap<String, LoxFunction>();
         for (var method : stmt.methods()) {
@@ -60,7 +73,12 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
             methods.put(methodName, new LoxFunction(method, environment, methodName.equals("init")));
         }
 
-        var clazz = new LoxClass(stmt.name().lexeme(), methods);
+        var clazz = new LoxClass(stmt.name().lexeme(), (LoxClass) superclass, methods);
+
+        if (superclass != null) {
+            environment = environment.enclosing;
+        }
+
         environment.assign(stmt.name(), clazz);
     }
 
@@ -229,6 +247,20 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         var value = evaluate(expr.value());
         instance.set(expr.name(), value);
         return value;
+    }
+
+    @Override
+    public Object visitSuper(Expr.Super expr) {
+        var distance = locals.get(expr);
+        var superclass = (LoxClass) environment.getAt(distance, "super");
+        var object = (LoxInstance) environment.getAt(distance - 1, "this");
+        var method = superclass.findMethod(expr.method().lexeme());
+
+        if (method == null) {
+            throw new RuntimeError(expr.method(), "Undefined property '" + expr.method().lexeme() + "'.");
+        }
+
+        return method.bind(object);
     }
 
     @Override
