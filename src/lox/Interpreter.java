@@ -51,13 +51,27 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     }
 
     @Override
+    public void visitClass(Stmt.Class stmt) {
+        environment.define(stmt.name().lexeme(), null);
+
+        var methods = new HashMap<String, LoxFunction>();
+        for (var method : stmt.methods()) {
+            var methodName = method.name().lexeme();
+            methods.put(methodName, new LoxFunction(method, environment, methodName.equals("init")));
+        }
+
+        var clazz = new LoxClass(stmt.name().lexeme(), methods);
+        environment.assign(stmt.name(), clazz);
+    }
+
+    @Override
     public void visitExpression(Stmt.Expression stmt) {
         evaluate(stmt.expression());
     }
 
     @Override
     public void visitFunction(Stmt.Function stmt) {
-        environment.define(stmt.name().lexeme(), new LoxFunction(stmt, environment));
+        environment.define(stmt.name().lexeme(), new LoxFunction(stmt, environment, false));
     }
 
     @Override
@@ -169,6 +183,15 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     }
 
     @Override
+    public Object visitGet(Expr.Get expr) {
+        var object = evaluate(expr.object());
+        if (object instanceof LoxInstance) {
+            return ((LoxInstance) object).get(expr.name());
+        }
+        throw new RuntimeError(expr.name(), "Only instances have properties.");
+    }
+
+    @Override
     public Object visitGrouping(Expr.Grouping expr) {
         return evaluate(expr.expression());
     }
@@ -193,6 +216,24 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         }
 
         return evaluate(expr.right());
+    }
+
+    @Override
+    public Object visitSet(Expr.Set expr) {
+        var object = evaluate(expr.object());
+
+        if (!(object instanceof LoxInstance instance)) {
+            throw new RuntimeError(expr.name(), "Only instances have fields.");
+        }
+
+        var value = evaluate(expr.value());
+        instance.set(expr.name(), value);
+        return value;
+    }
+
+    @Override
+    public Object visitThis(Expr.This expr) {
+        return lookUpVariable(expr.keyword(), expr);
     }
 
     @Override

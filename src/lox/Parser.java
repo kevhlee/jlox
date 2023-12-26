@@ -28,6 +28,9 @@ public class Parser {
 
     private Stmt declaration() {
         try {
+            if (match(TokenType.CLASS)) {
+                return classDeclaration();
+            }
             if (match(TokenType.FUN)) {
                 return funDeclaration("function");
             }
@@ -41,7 +44,20 @@ public class Parser {
         }
     }
 
-    private Stmt funDeclaration(String kind) {
+    private Stmt classDeclaration() {
+        var name = consume(TokenType.IDENTIFIER, "Expect class name.");
+        consume(TokenType.LEFT_BRACE, "Expect '{' before class body.");
+
+        var methods = new ArrayList<Stmt.Function>();
+        while (!check(TokenType.RIGHT_BRACE) && isParsing()) {
+            methods.add(funDeclaration("method"));
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.");
+        return new Stmt.Class(name, methods);
+    }
+
+    private Stmt.Function funDeclaration(String kind) {
         var name = consume(TokenType.IDENTIFIER, "Expect " + kind + " name.");
         consume(TokenType.LEFT_PAREN, "Expect '(' after " + kind + " name.");
 
@@ -182,8 +198,12 @@ public class Parser {
 
         if (match(TokenType.EQUAL)) {
             var equals = previous();
+            var value = assignment();
+
             if (expr instanceof Expr.Variable variable) {
-                return new Expr.Assign(variable.name(), assignment());
+                return new Expr.Assign(variable.name(), value);
+            } else if (expr instanceof Expr.Get get) {
+                return new Expr.Set(get.object(), get.name(), value);
             }
             throw error(equals, "Invalid assignment target.");
         }
@@ -248,22 +268,35 @@ public class Parser {
 
     private Expr call() {
         var expr = primary();
-        while (match(TokenType.LEFT_PAREN)) {
-            var arguments = new ArrayList<Expr>();
-            if (!check(TokenType.RIGHT_PAREN)) {
-                do {
-                    if (arguments.size() >= 255) {
-                        throw error(peek(), "Can't have more than 255 arguments.");
-                    }
-                    arguments.add(expression());
-                } while (match(TokenType.COMMA));
+
+        while (true) {
+            if (match(TokenType.LEFT_PAREN)) {
+                expr = finishCall(expr);
+            } else if (match(TokenType.DOT)) {
+                expr = new Expr.Get(expr, consume(TokenType.IDENTIFIER, "Expect property name after '.'."));
+            } else {
+                break;
             }
-
-            var paren = consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.");
-
-            expr = new Expr.Call(expr, paren, arguments);
         }
+
         return expr;
+    }
+
+    private Expr finishCall(Expr callee) {
+        var arguments = new ArrayList<Expr>();
+
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                if (arguments.size() >= 255) {
+                    throw error(peek(), "Can't have more than 255 arguments.");
+                }
+                arguments.add(expression());
+            } while (match(TokenType.COMMA));
+        }
+
+        var paren = consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.");
+
+        return new Expr.Call(callee, paren, arguments);
     }
 
     private Expr primary() {
@@ -279,6 +312,10 @@ public class Parser {
 
         if (match(TokenType.NUMBER, TokenType.STRING)) {
             return new Expr.Literal(previous().literal());
+        }
+
+        if (match(TokenType.THIS)) {
+            return new Expr.This(previous());
         }
 
         if (match(TokenType.IDENTIFIER)) {

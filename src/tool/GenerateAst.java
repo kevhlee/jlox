@@ -27,9 +27,12 @@ public class GenerateAst {
                 put("Assign", List.of("Token name", "Expr value"));
                 put("Binary", List.of("Expr left", "Token operator", "Expr right"));
                 put("Call", List.of("Expr callee", "Token paren", "java.util.List<Expr> arguments"));
+                put("Get", List.of("Expr object", "Token name"));
                 put("Grouping", List.of("Expr expression"));
                 put("Literal", List.of("Object value"));
                 put("Logical", List.of("Expr left", "Token operator", "Expr right"));
+                put("Set", List.of("Expr object", "Token name", "Expr value"));
+                put("This", List.of("Token keyword"));
                 put("Unary", List.of("Token operator", "Expr right"));
                 put("Variable", List.of("Token name"));
             }
@@ -38,6 +41,7 @@ public class GenerateAst {
         var stmt = new TreeMap<String, List<String>>() {
             {
                 put("Block", List.of("java.util.List<Stmt> statements"));
+                put("Class", List.of("Token name", "java.util.List<Stmt.Function> methods"));
                 put("Expression", List.of("Expr expression"));
                 put("Function", List.of("Token name", "java.util.List<Token> parameters", "java.util.List<Stmt> body"));
                 put("If", List.of("Expr condition", "Stmt thenBranch", "Stmt elseBranch"));

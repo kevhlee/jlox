@@ -7,9 +7,10 @@ import java.util.List;
  */
 class LoxFunction implements LoxCallable {
 
-    public LoxFunction(Stmt.Function declaration, Environment closure) {
+    public LoxFunction(Stmt.Function declaration, Environment closure, boolean initializer) {
         this.closure = closure;
         this.declaration = declaration;
+        this.initializer = initializer;
     }
 
     @Override
@@ -26,10 +27,17 @@ class LoxFunction implements LoxCallable {
 
         try {
             interpreter.executeBlock(declaration.body(), environment);
-            return null;
         } catch (ReturnValue returnValue) {
+            if (initializer) {
+                return closure.getAt(0, "this");
+            }
             return returnValue.value;
         }
+
+        if (initializer) {
+            return closure.getAt(0, "this");
+        }
+        return null;
     }
 
     @Override
@@ -37,7 +45,14 @@ class LoxFunction implements LoxCallable {
         return "<fn " + declaration.name().lexeme() + ">";
     }
 
+    protected LoxFunction bind(LoxInstance instance) {
+        var environment = new Environment(closure);
+        environment.define("this", instance);
+        return new LoxFunction(declaration, environment, initializer);
+    }
+
     private final Stmt.Function declaration;
     private final Environment closure;
+    private final boolean initializer;
 
 }

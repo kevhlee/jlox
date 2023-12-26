@@ -11,9 +11,12 @@ public interface Expr {
         R visitAssign(Assign expr);
         R visitBinary(Binary expr);
         R visitCall(Call expr);
+        R visitGet(Get expr);
         R visitGrouping(Grouping expr);
         R visitLiteral(Literal expr);
         R visitLogical(Logical expr);
+        R visitSet(Set expr);
+        R visitThis(This expr);
         R visitUnary(Unary expr);
         R visitVariable(Variable expr);
     }
@@ -54,6 +57,18 @@ public interface Expr {
         }
     }
 
+    record Get(Expr object, Token name) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitGet(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
+    }
+
     record Grouping(Expr expression) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
@@ -82,6 +97,30 @@ public interface Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitLogical(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
+    }
+
+    record Set(Expr object, Token name, Expr value) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitSet(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
+    }
+
+    record This(Token keyword) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitThis(this);
         }
 
         @Override

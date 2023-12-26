@@ -32,6 +32,29 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor {
     }
 
     @Override
+    public void visitClass(Stmt.Class stmt) {
+        var enclosingClassType = currentClassType;
+        currentClassType = ClassType.CLASS;
+
+        declare(stmt.name());
+        define(stmt.name());
+
+        beginScope();
+        scopes.peek().put("this", true);
+
+        for (var method : stmt.methods()) {
+            var functionType = FunctionType.METHOD;
+            if (method.name().lexeme().equals("init")) {
+                functionType = FunctionType.INITIALIZER;
+            }
+            resolveFunction(method, functionType);
+        }
+
+        endScope();
+        currentClassType = enclosingClassType;
+    }
+
+    @Override
     public void visitExpression(Stmt.Expression stmt) {
         resolve(stmt.expression());
     }
@@ -65,6 +88,10 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor {
         }
 
         if (stmt.value() != null) {
+            if (currentFunctionType == FunctionType.INITIALIZER) {
+                Lox.syntaxError(stmt.keyword(), "Can't return a value from an initializer.");
+            }
+
             resolve(stmt.value());
         }
     }
@@ -112,6 +139,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor {
     }
 
     @Override
+    public Void visitGet(Expr.Get expr) {
+        resolve(expr.object());
+        return null;
+    }
+
+    @Override
     public Void visitGrouping(Expr.Grouping expr) {
         resolve(expr.expression());
         return null;
@@ -126,6 +159,24 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor {
     public Void visitLogical(Expr.Logical expr) {
         resolve(expr.left());
         resolve(expr.right());
+        return null;
+    }
+
+    @Override
+    public Void visitSet(Expr.Set expr) {
+        resolve(expr.value());
+        resolve(expr.object());
+        return null;
+    }
+
+    @Override
+    public Void visitThis(Expr.This expr) {
+        if (currentClassType == ClassType.NONE) {
+            Lox.syntaxError(expr.keyword(), "Can't use 'this' outside of a class.");
+            return null;
+        }
+
+        resolveLocal(expr, expr.keyword());
         return null;
     }
 
@@ -212,11 +263,19 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor {
 
     private final Interpreter interpreter;
     private final Stack<Map<String, Boolean>> scopes = new Stack<>();
+    private ClassType currentClassType = ClassType.NONE;
     private FunctionType currentFunctionType = FunctionType.NONE;
+
+    private enum ClassType {
+        NONE,
+        CLASS,
+    }
 
     private enum FunctionType {
         NONE,
         FUNCTION,
+        INITIALIZER,
+        METHOD;
     }
 
 }

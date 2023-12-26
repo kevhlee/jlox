@@ -9,6 +9,7 @@ public interface Stmt {
 
     interface Visitor {
         void visitBlock(Block stmt);
+        void visitClass(Class stmt);
         void visitExpression(Expression stmt);
         void visitFunction(Function stmt);
         void visitIf(If stmt);
@@ -22,6 +23,18 @@ public interface Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitBlock(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
+    }
+
+    record Class(Token name, java.util.List<Stmt.Function> methods) implements Stmt {
+        @Override
+        public void accept(Visitor visitor) {
+            visitor.visitClass(this);
         }
 
         @Override
