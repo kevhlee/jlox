@@ -70,7 +70,7 @@ public class Lox {
 
                 runInterpreter(line);
                 hadSyntaxError = false;
-                System.out.println();
+                consoleReader.println();
             }
         }
     }
