@@ -1,13 +1,20 @@
 # jLox 🐟
 
-Tree-walking interpreter for [Lox](https://craftinginterpreters.com) written in Java.
+Implementations of the [Lox](https://craftinginterpreters.com) programming language written in Java.
+
+This project contains both the tree-walk (AST) and virtual machine implementations of Lox.
 
 ## Setup
 
 __Requirements:__
 
 - Java 17+
-- Apache Ant 1.10+
 
-This project creates an executable jar `jlox.jar` containing the interpreter. To build it, simply run the command `ant`.
-Afterwords, to run the interpreter, execute the command `java -jar jlox.jar` or run the script `jlox`.
+To build the project, run `./gradlew buildLox`. This will build and create executable JARs containing the Lox
+interpreter implementations in the `bin` directory:
+
+```log
+bin
+├── interpreter-ast.jar   // contains the tree-walk implementation
+└── interpreter-vm.jar    // contains the virtual machine implementation
+```

@@ -1,13 +1,16 @@
 ### Java ###
 *.class
 *.jar
-!lib/*.jar
 *.log
 **/bin/
 **/dist/
 **/build/
 **/out/
 **/target/
+
+### Gradle ###
+.gradle/
+!gradle/wrapper/*.jar
 
 ### IntelliJ ###
 *.iml

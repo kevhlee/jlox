@@ -1,0 +1,39 @@
+subprojects { subproject ->
+    subproject.apply plugin: "java"
+
+    subproject.java {
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
+    }
+}
+
+tasks.register("cleanLox", GradleBuild) {
+    group = "lox"
+    description = "Cleans the project."
+    tasks = ["clean"]
+
+    doLast {
+        delete file('bin')
+    }
+}
+
+tasks.register("buildLox", GradleBuild) {
+    group = "lox"
+    description = "Builds the Lox interpreters into executable JARs."
+    tasks = ["jar"]
+
+    doLast {
+        subprojects { subproject ->
+            copy {
+                into "${rootDir}/bin"
+                from(".") {
+                    include "build/libs/*.jar"
+                }
+                eachFile {
+                    path = name
+                }
+                includeEmptyDirs = false
+            }
+        }
+    }
+}

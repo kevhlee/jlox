@@ -1,0 +1,16 @@
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "jline:jline:2.14.6"
+}
+
+jar {
+    manifest {
+        attributes "Main-Class": "lox.Lox"
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}

@@ -1,9 +1,0 @@
-#!/bin/sh
-
-DIR="$(dirname "$0")"
-
-if [ -e "$DIR/jlox.jar" ]; then
-    java -jar "$DIR/jlox.jar" "$@"
-else
-    echo "Please run the 'ant' command before executing this script."
-fi
