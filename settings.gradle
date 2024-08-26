@@ -1,2 +1,2 @@
 include "interpreter-ast"
-include "interpreter-vm"
+include "interpreter-bytecode"
