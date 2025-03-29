@@ -1,5 +1,8 @@
 package lox;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -7,10 +10,32 @@ import java.util.Objects;
  *
  * @author Kevin Lee
  */
-public class Interpreter implements Expr.Visitor<Object> {
-    public void interpret(Expr expr) {
-        var result = evaluate(expr);
-        System.out.println(stringify(result));
+public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
+    private Environment currentEnvironment = new Environment(null);
+
+    public void interpret(List<Stmt> statements) {
+        for (var statement : statements) {
+            execute(statement);
+        }
+    }
+
+    protected void executeBlock(List<Stmt> statements, Environment environment) {
+        var previousEnvironment = currentEnvironment;
+
+        try {
+            currentEnvironment = environment;
+
+            for (var statement : statements) {
+                execute(statement);
+            }
+        }
+        finally {
+            currentEnvironment = previousEnvironment;
+        }
+    }
+
+    private void execute(Stmt stmt) {
+        stmt.accept(this);
     }
 
     private Object evaluate(Expr expr) {
@@ -36,9 +61,84 @@ public class Interpreter implements Expr.Visitor<Object> {
         return text;
     }
 
+    protected static class Environment {
+        private final Environment enclosing;
+        private final Map<String, Object> values = new HashMap<>();
+
+        public Environment(Environment enclosing) {
+            this.enclosing = enclosing;
+        }
+
+        public void define(String name, Object value) {
+            values.put(name, value);
+        }
+
+        public void assign(Token name, Object value) throws RuntimeError {
+            if (values.containsKey(name.lexeme())) {
+                values.put(name.lexeme(), value);
+                return;
+            }
+
+            if (enclosing != null) {
+                enclosing.assign(name, value);
+                return;
+            }
+
+            throw new RuntimeError(name, "Undefined variable '%s'".formatted(name.lexeme()));
+        }
+
+        public Object get(Token name) throws RuntimeError {
+            var value = values.get(name.lexeme());
+            if (value != null) {
+                return value;
+            }
+
+            if (enclosing != null) {
+                return enclosing.get(name);
+            }
+
+            throw new RuntimeError(name, "Undefined variable '%s'".formatted(name.lexeme()));
+        }
+    }
+
+    //
+    // Stmt
+    //
+
+    @Override
+    public void visitBlockStmt(Stmt.Block stmt) {
+        executeBlock(stmt.statements(), new Environment(currentEnvironment));
+    }
+
+    @Override
+    public void visitExpressionStmt(Stmt.Expression stmt) {
+        evaluate(stmt.expression());
+    }
+
+    @Override
+    public void visitPrintStmt(Stmt.Print stmt) {
+        System.out.println(stringify(evaluate(stmt.value())));
+    }
+
+    @Override
+    public void visitVarStmt(Stmt.Var stmt) {
+        Object value = null;
+        if (stmt.initializer() != null) {
+            value = evaluate(stmt.initializer());
+        }
+        currentEnvironment.define(stmt.name().lexeme(), value);
+    }
+
     //
     // Expr
     //
+
+    @Override
+    public Object visitAssignExpr(Expr.Assign expr) {
+        Object value = evaluate(expr.value());
+        currentEnvironment.assign(expr.name(), value);
+        return value;
+    }
 
     @Override
     public Object visitBinaryExpr(Expr.Binary expr) {
@@ -102,5 +202,10 @@ public class Interpreter implements Expr.Visitor<Object> {
             // Unreachable
             default -> null;
         };
+    }
+
+    @Override
+    public Object visitVariableExpr(Expr.Variable expr) {
+        return currentEnvironment.get(expr.name());
     }
 }

@@ -79,9 +79,9 @@ public class Lox {
     private static void runInterpreter(String source) {
         try {
             var tokens = new Scanner(source).scanTokens();
-            var expression = new Parser(tokens).parse();
+            var statements = new Parser(tokens).parse();
 
-            interpreter.interpret(expression);
+            interpreter.interpret(statements);
         }
         catch (SyntaxError syntaxError) {
             reportSyntaxError(syntaxError);
