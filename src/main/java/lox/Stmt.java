@@ -10,8 +10,10 @@ public interface Stmt {
     interface Visitor {
         void visitBlockStmt(Block stmt);
         void visitExpressionStmt(Expression stmt);
+        void visitFunctionStmt(Function stmt);
         void visitIfStmt(If stmt);
         void visitPrintStmt(Print stmt);
+        void visitReturnStmt(Return stmt);
         void visitVarStmt(Var stmt);
         void visitWhileStmt(While stmt);
     }
@@ -30,6 +32,13 @@ public interface Stmt {
         }
     }
 
+    record Function(Token name, java.util.List<Token> parameters, java.util.List<Stmt> body) implements Stmt {
+        @Override
+        public void accept(Visitor visitor) {
+            visitor.visitFunctionStmt(this);
+        }
+    }
+
     record If(Expr condition, Stmt thenBranch, Stmt elseBranch) implements Stmt {
         @Override
         public void accept(Visitor visitor) {
@@ -41,6 +50,13 @@ public interface Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitPrintStmt(this);
+        }
+    }
+
+    record Return(Token keyword, Expr value) implements Stmt {
+        @Override
+        public void accept(Visitor visitor) {
+            visitor.visitReturnStmt(this);
         }
     }
 

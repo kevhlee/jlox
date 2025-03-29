@@ -1,5 +1,6 @@
 package lox;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +12,27 @@ import java.util.Objects;
  * @author Kevin Lee
  */
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
-    private Environment currentEnvironment = new Environment(null);
+    private final Environment globals = new Environment(null);
+    private Environment currentEnvironment = globals;
+
+    public Interpreter() {
+        globals.define("clock", new Callable() {
+            @Override
+            public int arity() {
+                return 0;
+            }
+
+            @Override
+            public Object call(Interpreter interpreter, List<Object> arguments) {
+                return System.currentTimeMillis() / 1000.0;
+            }
+
+            @Override
+            public String toString() {
+                return "<native fn>";
+            }
+        });
+    }
 
     public void interpret(List<Stmt> statements) {
         for (var statement : statements) {
@@ -101,6 +122,20 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         }
     }
 
+    protected static class ReturnValue extends RuntimeException {
+        private final Object value;
+
+        public ReturnValue(Object value) {
+            super(null, null, false, false);
+
+            this.value = value;
+        }
+
+        public Object getValue() {
+            return value;
+        }
+    }
+
     //
     // Stmt
     //
@@ -116,6 +151,39 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     }
 
     @Override
+    public void visitFunctionStmt(Stmt.Function stmt) {
+        final var closure = currentEnvironment;
+
+        currentEnvironment.define(stmt.name().lexeme(), new Callable() {
+            @Override
+            public int arity() {
+                return stmt.parameters().size();
+            }
+
+            @Override
+            public Object call(Interpreter interpreter, List<Object> arguments) {
+                var environment = new Environment(closure);
+                for (var i = 0; i < stmt.parameters().size(); i++) {
+                    environment.define(stmt.parameters().get(i).lexeme(), arguments.get(i));
+                }
+
+                try {
+                    interpreter.executeBlock(stmt.body(), environment);
+                }
+                catch (ReturnValue returnValue) {
+                    return returnValue.getValue();
+                }
+                return null;
+            }
+
+            @Override
+            public String toString() {
+                return "<fn %s>".formatted(stmt.name().lexeme());
+            }
+        });
+    }
+
+    @Override
     public void visitIfStmt(Stmt.If stmt) {
         if (isTruthy(evaluate(stmt.condition()))) {
             execute(stmt.thenBranch());
@@ -128,6 +196,15 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     @Override
     public void visitPrintStmt(Stmt.Print stmt) {
         System.out.println(stringify(evaluate(stmt.value())));
+    }
+
+    @Override
+    public void visitReturnStmt(Stmt.Return stmt) {
+        Object value = null;
+        if (stmt.value() != null) {
+            value = evaluate(stmt.value());
+        }
+        throw new ReturnValue(value);
     }
 
     @Override
@@ -192,6 +269,26 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         }
 
         throw new RuntimeError(expr.operator(), "Operands must be numbers");
+    }
+
+    @Override
+    public Object visitCallExpr(Expr.Call expr) {
+        var callee = evaluate(expr.callee());
+
+        var arguments = new ArrayList<>();
+        for (var i = 0; i < expr.arguments().size(); i++) {
+            arguments.add(evaluate(expr.arguments().get(i)));
+        }
+
+        if (callee instanceof Callable callable) {
+            if (arguments.size() != callable.arity()) {
+                throw new RuntimeError(
+                        expr.paren(), "Expected %d arguments but got %d".formatted(callable.arity(), arguments.size()));
+            }
+            return callable.call(this, arguments);
+        }
+
+        throw new RuntimeError(expr.paren(), "Can only call functions and classes");
     }
 
     @Override
