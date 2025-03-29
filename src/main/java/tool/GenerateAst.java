@@ -27,6 +27,7 @@ public class GenerateAst {
                 put("Binary", List.of("Expr left", "Token operator", "Expr right"));
                 put("Grouping", List.of("Expr expression"));
                 put("Literal", List.of("Object value"));
+                put("Logical", List.of("Expr left", "Token operator", "Expr right"));
                 put("Unary", List.of("Token operator", "Expr right"));
                 put("Variable", List.of("Token name"));
             }
@@ -36,8 +37,10 @@ public class GenerateAst {
             {
                 put("Block", List.of("java.util.List<Stmt> statements"));
                 put("Expression", List.of("Expr expression"));
+                put("If", List.of("Expr condition, Stmt thenBranch, Stmt elseBranch"));
                 put("Print", List.of("Expr value"));
                 put("Var", List.of("Token name", "Expr initializer"));
+                put("While", List.of("Expr condition", "Stmt body"));
             }
         };
 

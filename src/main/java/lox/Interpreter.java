@@ -116,6 +116,16 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     }
 
     @Override
+    public void visitIfStmt(Stmt.If stmt) {
+        if (isTruthy(evaluate(stmt.condition()))) {
+            execute(stmt.thenBranch());
+        }
+        else if (stmt.elseBranch() != null) {
+            execute(stmt.elseBranch());
+        }
+    }
+
+    @Override
     public void visitPrintStmt(Stmt.Print stmt) {
         System.out.println(stringify(evaluate(stmt.value())));
     }
@@ -127,6 +137,13 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
             value = evaluate(stmt.initializer());
         }
         currentEnvironment.define(stmt.name().lexeme(), value);
+    }
+
+    @Override
+    public void visitWhileStmt(Stmt.While stmt) {
+        while (isTruthy(evaluate(stmt.condition()))) {
+            execute(stmt.body());
+        }
     }
 
     //
@@ -185,6 +202,19 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     @Override
     public Object visitLiteralExpr(Expr.Literal expr) {
         return expr.value();
+    }
+
+    @Override
+    public Object visitLogicalExpr(Expr.Logical expr) {
+        var left = evaluate(expr.left());
+
+        if ((expr.operator().type() == TokenType.OR && isTruthy(left)) ||
+                (expr.operator().type() == TokenType.AND && !isTruthy(left))) {
+
+            return left;
+        }
+
+        return evaluate(expr.right());
     }
 
     @Override

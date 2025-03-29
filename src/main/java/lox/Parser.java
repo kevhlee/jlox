@@ -1,6 +1,7 @@
 package lox;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -98,6 +99,18 @@ public class Parser {
     }
 
     private Stmt statement() throws SyntaxError {
+        if (match(TokenType.IF)) {
+            return ifStatement();
+        }
+
+        if (match(TokenType.FOR)) {
+            return forStatement();
+        }
+
+        if (match(TokenType.WHILE)) {
+            return whileStatement();
+        }
+
         if (match(TokenType.PRINT)) {
             return printStatement();
         }
@@ -116,6 +129,68 @@ public class Parser {
         }
         consume(TokenType.RIGHT_BRACE, "Expect '}' after block");
         return statements;
+    }
+
+    private Stmt.If ifStatement() throws SyntaxError {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'");
+        var condition = expression();
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after 'if' condition");
+        var thenBranch = statement();
+
+        Stmt elseBranch = null;
+        if (match(TokenType.ELSE)) {
+            elseBranch = statement();
+        }
+
+        return new Stmt.If(condition, thenBranch, elseBranch);
+    }
+
+    private Stmt forStatement() throws SyntaxError {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'");
+
+        Stmt initializer = null;
+        if (match(TokenType.VAR)) {
+            initializer = varDeclaration();
+        }
+        else if (!check(TokenType.SEMICOLON)) {
+            initializer = expressionStatement();
+        }
+
+        Expr condition;
+        if (check(TokenType.SEMICOLON)) {
+            condition = new Expr.Literal(true);
+        }
+        else {
+            condition = expression();
+        }
+        consume(TokenType.SEMICOLON, "Expect ';' after loop condition");
+
+        Expr increment = null;
+        if (!check(TokenType.RIGHT_PAREN)) {
+            increment = expression();
+        }
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after 'for' clauses");
+
+        var body = statement();
+
+        if (increment != null) {
+            body = new Stmt.Block(Arrays.asList(body, new Stmt.Expression(increment)));
+        }
+
+        body = new Stmt.While(condition, body);
+
+        if (initializer != null) {
+            body = new Stmt.Block(Arrays.asList(initializer, body));
+        }
+
+        return body;
+    }
+
+    private Stmt.While whileStatement() throws SyntaxError {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'");
+        var condition = expression();
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after 'while' condition");
+        return new Stmt.While(condition, statement());
     }
 
     private Stmt.Print printStatement() throws SyntaxError {
@@ -139,7 +214,7 @@ public class Parser {
     }
 
     private Expr assignment() throws SyntaxError {
-        var expr = equality();
+        var expr = or();
 
         if (match(TokenType.EQUAL)) {
             var equal = previous();
@@ -152,6 +227,22 @@ public class Parser {
             throw error(equal, "Invalid assignment target");
         }
 
+        return expr;
+    }
+
+    private Expr or() throws SyntaxError {
+        var expr = and();
+        while (match(TokenType.OR)) {
+            expr = new Expr.Logical(expr, previous(), and());
+        }
+        return expr;
+    }
+
+    private Expr and() throws SyntaxError {
+        var expr = equality();
+        while (match(TokenType.AND)) {
+            expr = new Expr.Logical(expr, previous(), equality());
+        }
         return expr;
     }
 
