@@ -1,0 +1,10 @@
+#!/bin/sh
+
+SCRIPT_DIR=$(dirname "$0")
+
+if ! test -f "${SCRIPT_DIR}/build/install/jlox/bin/jlox"; then
+  echo "Please execute 'gradlew installDist'."
+  exit 1
+fi
+
+"${SCRIPT_DIR}/build/install/jlox/bin/jlox" "$@"
