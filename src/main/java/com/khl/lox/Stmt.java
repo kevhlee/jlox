@@ -15,9 +15,13 @@ public interface Stmt {
 
         void visitExpression(Expression stmt);
 
+        void visitIf(If stmt);
+
         void visitPrint(Print stmt);
 
         void visitVar(Var stmt);
+
+        void visitWhile(While stmt);
     }
 
     //
@@ -38,6 +42,13 @@ public interface Stmt {
         }
     }
 
+    record If(Expr condition, Stmt thenBranch, Stmt elseBranch) implements Stmt {
+        @Override
+        public void accept(Visitor visitor) {
+            visitor.visitIf(this);
+        }
+    }
+
     record Print(Expr value) implements Stmt {
         @Override
         public void accept(Visitor visitor) {
@@ -49,6 +60,13 @@ public interface Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitVar(this);
+        }
+    }
+
+    record While(Expr condition, Stmt body) implements Stmt {
+        @Override
+        public void accept(Visitor visitor) {
+            visitor.visitWhile(this);
         }
     }
 }
