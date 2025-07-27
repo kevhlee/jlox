@@ -1,5 +1,7 @@
 package com.khl.lox;
 
+import java.util.List;
+
 /**
  * A Lox expression AST node.
  *
@@ -12,6 +14,8 @@ public interface Expr {
         R visitAssign(Assign expr);
 
         R visitBinary(Binary expr);
+
+        R visitCall(Call expr);
 
         R visitGrouping(Grouping expr);
 
@@ -39,6 +43,13 @@ public interface Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitBinary(this);
+        }
+    }
+
+    record Call(Expr callee, Token paren, List<Expr> arguments) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitCall(this);
         }
     }
 

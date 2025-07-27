@@ -15,9 +15,13 @@ public interface Stmt {
 
         void visitExpression(Expression stmt);
 
+        void visitFunction(Function stmt);
+
         void visitIf(If stmt);
 
         void visitPrint(Print stmt);
+
+        void visitReturn(Return stmt);
 
         void visitVar(Var stmt);
 
@@ -42,6 +46,13 @@ public interface Stmt {
         }
     }
 
+    record Function(Token name, List<Token> parameters, List<Stmt> body) implements Stmt {
+        @Override
+        public void accept(Visitor visitor) {
+            visitor.visitFunction(this);
+        }
+    }
+
     record If(Expr condition, Stmt thenBranch, Stmt elseBranch) implements Stmt {
         @Override
         public void accept(Visitor visitor) {
@@ -53,6 +64,13 @@ public interface Stmt {
         @Override
         public void accept(Visitor visitor) {
             visitor.visitPrint(this);
+        }
+    }
+
+    record Return(Token keyword, Expr value) implements Stmt {
+        @Override
+        public void accept(Visitor visitor) {
+            visitor.visitReturn(this);
         }
     }
 

@@ -49,6 +49,9 @@ public class Parser {
         return new Parser(source).parse();
     }
 
+    private static final int MAX_ARGS = 255;
+    private static final int MAX_PARAMETERS = 255;
+
     private int current;
     private final List<Token> tokens = new ArrayList<>();
     private final List<Error> errors = new ArrayList<>();
@@ -67,11 +70,9 @@ public class Parser {
         var statements = new ArrayList<Stmt>();
 
         while (isParsing()) {
-            try {
-                statements.add(declaration());
-            } catch (Error error) {
-                errors.add(error);
-                synchronize();
+            var declaration = declaration();
+            if (declaration != null) {
+                statements.add(declaration);
             }
         }
 
@@ -139,12 +140,42 @@ public class Parser {
     // Stmt
     //
 
-    private Stmt declaration() throws Error {
-        if (match(TokenType.VAR)) {
-            return varDeclaration();
+    private Stmt declaration() {
+        try {
+            if (match(TokenType.FUN)) {
+                return funDeclaration("function");
+            }
+
+            if (match(TokenType.VAR)) {
+                return varDeclaration();
+            }
+
+            return statement();
+        } catch (Error error) {
+            errors.add(error);
+            synchronize();
+            return null;
+        }
+    }
+
+    private Stmt.Function funDeclaration(String kind) throws Error {
+        var name = consume(TokenType.IDENTIFIER, "Expect %s name".formatted(kind));
+        consume(TokenType.LEFT_PAREN, "Expect '(' after %s name".formatted(kind));
+
+        var parameters = new ArrayList<Token>();
+
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                if (parameters.size() >= MAX_PARAMETERS) {
+                    throw new Error(peek(), "Can't have more than %d parameters".formatted(MAX_PARAMETERS));
+                }
+                parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name"));
+            } while (match(TokenType.COMMA));
         }
 
-        return statement();
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters");
+        consume(TokenType.LEFT_BRACE, "Expect '{' before %s body".formatted(kind));
+        return new Stmt.Function(name, Collections.unmodifiableList(parameters), block());
     }
 
     private Stmt.Var varDeclaration() throws Error {
@@ -176,6 +207,10 @@ public class Parser {
 
         if (match(TokenType.PRINT)) {
             return printStatement();
+        }
+
+        if (match(TokenType.RETURN)) {
+            return returnStatement();
         }
 
         if (match(TokenType.LEFT_BRACE)) {
@@ -274,15 +309,27 @@ public class Parser {
         return new Stmt.Print(value);
     }
 
+    private Stmt.Return returnStatement() throws Error {
+        var keyword = previous();
+
+        Expr value = null;
+        if (!check(TokenType.SEMICOLON)) {
+            value = expression();
+        }
+
+        consume(TokenType.SEMICOLON, "Expect after return value");
+        return new Stmt.Return(keyword, value);
+    }
+
     private Stmt.Expression expressionStatement() throws Error {
         var expr = expression();
         consume(TokenType.SEMICOLON, "Expect ';' after expression");
         return new Stmt.Expression(expr);
     }
 
-    //
-    // Expr
-    //
+//
+// Expr
+//
 
     private Expr expression() throws Error {
         return or();
@@ -356,7 +403,30 @@ public class Parser {
         if (match(TokenType.BANG, TokenType.MINUS)) {
             return new Expr.Unary(previous(), unary());
         }
-        return primary();
+        return call();
+    }
+
+    private Expr call() throws Error {
+        var expr = primary();
+
+        while (match(TokenType.LEFT_PAREN)) {
+            var arguments = new ArrayList<Expr>();
+
+            if (!check(TokenType.RIGHT_PAREN)) {
+                do {
+                    if (arguments.size() >= MAX_ARGS) {
+                        throw new Error(peek(), "Can't have more than %d arguments".formatted(MAX_ARGS));
+                    }
+                    arguments.add(expression());
+                } while (match(TokenType.COMMA));
+            }
+
+            expr = new Expr.Call(
+                    expr, consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments"),
+                    Collections.unmodifiableList(arguments));
+        }
+
+        return expr;
     }
 
     private Expr primary() throws Error {

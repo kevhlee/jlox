@@ -1,6 +1,7 @@
 package com.khl.lox;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,25 @@ import java.util.Objects;
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     public Interpreter(PrintStream stdout) {
         this.stdout = stdout;
+
+        // Define some native functions
+
+        this.environment.define("clock", new LoxCallable() {
+            @Override
+            public int arity() {
+                return 0;
+            }
+
+            @Override
+            public Object call(Interpreter interpreter, List<Object> arguments) {
+                return (double) System.currentTimeMillis() / 1000.0;
+            }
+
+            @Override
+            public String toString() {
+                return "<native fn>";
+            }
+        });
     }
 
     /**
@@ -28,14 +48,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         }
     }
 
-    private Environment environment = new Environment(null);
-    private final PrintStream stdout;
-
-    private void execute(Stmt stmt) {
-        stmt.accept(this);
-    }
-
-    private void executeBlock(Environment newEnvironment, List<Stmt> body) {
+    protected void executeBlock(Environment newEnvironment, List<Stmt> body) {
         var previous = environment;
 
         try {
@@ -47,6 +60,13 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         } finally {
             environment = previous;
         }
+    }
+
+    private Environment environment = new Environment(null);
+    private final PrintStream stdout;
+
+    private void execute(Stmt stmt) {
+        stmt.accept(this);
     }
 
     private Object evaluate(Expr expr) {
@@ -129,6 +149,11 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     }
 
     @Override
+    public void visitFunction(Stmt.Function stmt) {
+        environment.define(stmt.name().lexeme(), new LoxFunction(environment, stmt));
+    }
+
+    @Override
     public void visitIf(Stmt.If stmt) {
         if (isTruthy(evaluate(stmt.condition()))) {
             execute(stmt.thenBranch());
@@ -140,6 +165,15 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
     @Override
     public void visitPrint(Stmt.Print stmt) {
         stdout.println(stringify(evaluate(stmt.value())));
+    }
+
+    @Override
+    public void visitReturn(Stmt.Return stmt) {
+        Object value = null;
+        if (stmt.value() != null) {
+            value = evaluate(stmt.value());
+        }
+        throw new LoxReturn(value);
     }
 
     @Override
@@ -200,6 +234,27 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor {
         }
 
         throw new RuntimeError(expr.operator(), "Operands must be numbers");
+    }
+
+    @Override
+    public Object visitCall(Expr.Call expr) {
+        var callee = evaluate(expr.callee());
+
+        if (callee instanceof LoxCallable callable) {
+            var arguments = new ArrayList<>();
+            for (var argument : expr.arguments()) {
+                arguments.add(evaluate(argument));
+            }
+
+            if (arguments.size() != callable.arity()) {
+                throw new RuntimeError(
+                        expr.paren(), "Expected %d arguments but got %d".formatted(callable.arity(), arguments.size()));
+            }
+
+            return callable.call(this, arguments);
+        }
+
+        throw new RuntimeError(expr.paren(), "Can only call functions and classes");
     }
 
     @Override
